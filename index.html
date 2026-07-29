@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7ec8ff">
+<title>चिड़िया उड़ 🐦</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overscroll-behavior:none; }
+  body {
+    font-family: ui-rounded, 'SF Pro Rounded', 'Hind', 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(180deg, #6bbfff 0%, #a8dcff 55%, #eaf7ff 100%);
+    color:#123; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+    touch-action: manipulation; overflow:hidden; position:fixed; inset:0;
+  }
+  .cloud { position:fixed; font-size:42px; opacity:.8; pointer-events:none; z-index:0;
+    animation: drift linear infinite; }
+  @keyframes drift { from { transform:translateX(-20vw);} to { transform:translateX(120vw);} }
+
+  .screen { position:fixed; inset:0; display:none; flex-direction:column; align-items:center;
+    padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 12px);
+    z-index:1; }
+  .screen.active { display:flex; }
+
+  /* ---------- menu ---------- */
+  #menu { justify-content:center; gap:14px; }
+  #menu h1 { font-size: clamp(44px, 13vw, 64px); text-shadow: 0 3px 0 rgba(0,0,0,.08); }
+  #menu .bird { font-size:72px; animation: bob 2.2s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{ transform:translateY(0) rotate(-4deg);} 50%{ transform:translateY(-14px) rotate(4deg);} }
+  #menu .sub { font-size:15px; opacity:.75; margin-bottom:10px; }
+  .btn {
+    border:0; font:inherit; cursor:pointer; color:#fff; background:#ff7a1a;
+    font-size:20px; font-weight:700; padding:16px 22px; border-radius:18px;
+    width:min(320px, 86vw); box-shadow: 0 5px 0 #d95f00; transition: transform .06s;
+  }
+  .btn:active { transform:translateY(3px); box-shadow:0 2px 0 #d95f00; }
+  .btn.teal { background:#00a896; box-shadow:0 5px 0 #007a6d; }
+  .btn.teal:active { box-shadow:0 2px 0 #007a6d; }
+  .btn.violet { background:#7048e8; box-shadow:0 5px 0 #5231b8; }
+  .btn.violet:active { box-shadow:0 2px 0 #5231b8; }
+  .btn.ghost { background:#fff; color:#123; box-shadow:0 5px 0 #c9d8e4; font-size:16px; padding:12px 18px; width:auto; }
+  .btn.ghost:active { box-shadow:0 2px 0 #c9d8e4; }
+  .btn:disabled { opacity:.45; pointer-events:none; }
+  .btn small { display:block; font-weight:500; font-size:12px; opacity:.85; }
+  #howto { font-size:13.5px; background:rgba(255,255,255,.7); border-radius:14px;
+    padding:10px 14px; max-width:min(340px,88vw); line-height:1.45; }
+
+  .toprow { display:flex; align-items:center; justify-content:space-between; width:100%;
+    max-width:520px; gap:8px; min-height:44px; padding-right:48px; /* clear the fixed sound btn */ }
+  .iconbtn { border:0; background:rgba(255,255,255,.8); border-radius:12px; width:42px; height:42px;
+    font-size:20px; cursor:pointer; flex:none; }
+  #soundbtn { position:fixed; top:calc(env(safe-area-inset-top) + 12px); right:14px; z-index:60; }
+
+  /* ---------- shared game (solo + online) ---------- */
+  .gamewrap { display:flex; flex-direction:column; width:100%; max-width:520px; flex:1; gap:10px; }
+  .hud { display:flex; gap:10px; align-items:center; font-weight:700; font-size:17px; flex-wrap:wrap; }
+  .hud .chip { background:rgba(255,255,255,.85); padding:5px 12px; border-radius:12px; }
+  .callcard { flex:1; background:#fff; border-radius:24px; box-shadow:0 8px 24px rgba(20,60,100,.15);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    padding:14px; text-align:center; position:relative; overflow:hidden; min-height:170px; }
+  .callcard .emoji { font-size: clamp(58px, 19vw, 96px); line-height:1.1; }
+  .callcard .emoji.fly { animation: flyup .8s ease-in forwards; }
+  @keyframes flyup { to { transform: translate(60px,-160px) rotate(-15deg); opacity:0; } }
+  .callcard .word { font-size: clamp(34px, 10vw, 54px); font-weight:800; }
+  .callcard .latin { font-size:16px; opacity:.6; font-weight:600; letter-spacing:.5px; }
+  .callcard .msg { font-size:20px; font-weight:700; opacity:.75; }
+  .bar { width:86%; height:12px; background:#e8eef4; border-radius:8px; overflow:hidden; margin-top:8px; }
+  .bar i { display:block; height:100%; width:100%; background:linear-gradient(90deg,#ffb01a,#ff7a1a);
+    border-radius:8px; transform-origin:left; }
+  .callcard.good { background:#e5fbe9; } .callcard.bad { background:#ffe6e6; }
+  .verdict { font-size:26px; font-weight:800; }
+  .verdict.good { color:#0d9f4f; } .verdict.bad { color:#e03131; }
+
+  .pad { height:32%; min-height:150px; border-radius:24px; border:4px dashed rgba(255,255,255,.9);
+    background:rgba(255,255,255,.35); display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:4px; font-size:20px; font-weight:800; color:#1a3a55;
+    touch-action:none; }
+  .pad .hint { font-size:13px; font-weight:600; opacity:.6; }
+  .pad.held { background:#bff0c8; border-color:#4caf50; border-style:solid; }
+  .pad.dead { opacity:.45; pointer-events:none; }
+
+  /* ---------- party ---------- */
+  #party { padding:8px; }
+  #zones { display:grid; gap:8px; width:100%; height:100%; }
+  #zones.p2 { grid-template-rows:1fr 1fr; }
+  #zones.p3 { grid-template-rows:1fr 1fr; grid-template-columns:1fr 1fr; }
+  #zones.p3 .zone:first-child { grid-column:1/3; }
+  #zones.p4 { grid-template-rows:1fr 1fr; grid-template-columns:1fr 1fr; }
+  .zone { border-radius:20px; display:flex; align-items:center; justify-content:center;
+    touch-action:none; position:relative; overflow:hidden;
+    background:rgba(255,255,255,.5); border:4px solid var(--pc, #ff7a1a); }
+  .zone.flip .zin { transform:rotate(180deg); }
+  .zin { display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:2px; text-align:center; width:100%; padding:8px; pointer-events:none; }
+  .zone .ztag { position:absolute; top:6px; left:10px; font-size:12px; font-weight:800;
+    color:var(--pc); pointer-events:none; }
+  .zone.flip .ztag { top:auto; bottom:6px; left:auto; right:10px; transform:rotate(180deg); }
+  .zone .zemoji { font-size: clamp(30px, 8vw, 54px); }
+  .zone .zword { font-size: clamp(20px, 6vw, 34px); font-weight:800; }
+  .zone .zmsg { font-size:15px; font-weight:700; opacity:.8; }
+  .zone .zbar { width:70%; height:8px; background:rgba(0,0,0,.08); border-radius:6px; overflow:hidden; }
+  .zone .zbar i { display:block; height:100%; background:var(--pc); transform-origin:left; }
+  .zone.held { background:#d9f5de; }
+  .zone.good { background:#b9f0c4; } .zone.bad { background:#ffc9c9; }
+  .zone.out { background:#dfe3e8; border-color:#98a2ad; filter:grayscale(.6); }
+  .zone.champ { background:#fff3bf; box-shadow:inset 0 0 0 4px gold; }
+
+  /* ---------- online ---------- */
+  input[type=text] { font:inherit; font-size:19px; font-weight:700; text-align:center;
+    border:3px solid #cfe3f2; border-radius:14px; padding:12px; width:min(300px,80vw);
+    background:#fff; color:#123; outline:none; text-transform:none; }
+  input.code { letter-spacing:.5em; text-transform:uppercase; font-size:26px; }
+  #osetup, #lobby, #psetup { justify-content:center; gap:14px; }
+  h2 { font-size:26px; }
+  #lobbycode { font-size:46px; font-weight:800; letter-spacing:.35em; background:#fff;
+    padding:8px 18px 8px 26px; border-radius:16px; }
+  #lobbylist { display:flex; flex-direction:column; gap:6px; width:min(320px,86vw); }
+  #lobbylist .lp { background:rgba(255,255,255,.85); border-radius:12px; padding:9px 14px;
+    font-weight:700; display:flex; justify-content:space-between; }
+  .oppsrow { display:flex; gap:6px; flex-wrap:wrap; }
+  .opp { background:rgba(255,255,255,.85); border-radius:10px; padding:4px 10px;
+    font-size:13px; font-weight:700; }
+  .opp.dead { opacity:.5; text-decoration:line-through; }
+  .opp.wait { outline:2px dashed #ff7a1a; }
+
+  /* ---------- overlay ---------- */
+  #overlay { position:fixed; inset:0; background:rgba(10,30,50,.55); z-index:50;
+    display:none; align-items:center; justify-content:center; padding:20px; }
+  #overlay.active { display:flex; }
+  #overlay .box { background:#fff; border-radius:24px; padding:26px 22px; text-align:center;
+    display:flex; flex-direction:column; gap:12px; align-items:center; width:min(330px,88vw); }
+  #overlay .big { font-size:44px; }
+  #overlay h3 { font-size:24px; }
+  #overlay p { opacity:.7; font-size:15px; }
+  #toast { position:fixed; left:50%; bottom:12%; transform:translateX(-50%); background:#123;
+    color:#fff; padding:10px 18px; border-radius:14px; font-weight:700; z-index:70;
+    display:none; max-width:86vw; text-align:center; }
+</style>
+</head>
+<body>
+
+<button class="iconbtn" id="soundbtn">🔊</button>
+
+<!-- ================= MENU ================= -->
+<section class="screen active" id="menu">
+  <div class="bird">🐦</div>
+  <h1>चिड़िया उड़!</h1>
+  <div class="sub">udta hai to ungli uthao. nahi udta to hilna mat!</div>
+  <button class="btn" id="b-solo">🪶 Akele Khelo <small>computer bolega, aap udao</small></button>
+  <button class="btn teal" id="b-party">📱 Ek Phone, Sab Log <small>2–4 ungliyan, ek hi screen</small></button>
+  <button class="btn violet" id="b-online">🌍 Door Se Khelo <small>room code se doston ke saath</small></button>
+  <div id="howto"><b>Kaise khelein:</b> ungli pad par rakho. Naam aayega — agar wo <b>udta hai</b> (chidiya ✈️ titli) to ungli <b>uthao</b>, nahi udta (gaay 🪑 aloo) to <b>rakhe raho</b>. Galti = out! Speed badhti jaayegi 😈</div>
+</section>
+
+<!-- ================= SOLO / ONLINE GAME ================= -->
+<section class="screen" id="game">
+  <div class="gamewrap">
+    <div class="toprow">
+      <button class="iconbtn" id="g-back">✕</button>
+      <div class="hud" id="g-hud"></div>
+    </div>
+    <div class="oppsrow" id="g-opps" style="display:none"></div>
+    <div class="callcard" id="g-card">
+      <div class="emoji" id="g-emoji">🐦</div>
+      <div class="word" id="g-word"></div>
+      <div class="latin" id="g-latin"></div>
+      <div class="msg" id="g-msg"></div>
+      <div class="bar" id="g-barwrap" style="visibility:hidden"><i id="g-bar"></i></div>
+    </div>
+    <div class="pad" id="g-pad"><span id="g-padtext">✋ UNGLI YAHAN RAKHO</span><span class="hint" id="g-padhint">dabaye rakho, word ka wait karo</span></div>
+  </div>
+</section>
+
+<!-- ================= PARTY SETUP ================= -->
+<section class="screen" id="psetup">
+  <h2>📱 Kitne khiladi?</h2>
+  <p style="opacity:.7;font-size:14px;max-width:300px;text-align:center">Phone beech mein rakho — har khiladi apne rang ke dabbe par ungli rakhega</p>
+  <button class="btn" data-n="2">👥 2 Khiladi</button>
+  <button class="btn teal" data-n="3">👥 3 Khiladi</button>
+  <button class="btn violet" data-n="4">👥 4 Khiladi</button>
+  <button class="btn ghost" id="p-back">← Menu</button>
+</section>
+
+<!-- ================= PARTY GAME ================= -->
+<section class="screen" id="party">
+  <div id="zones"></div>
+</section>
+
+<!-- ================= ONLINE SETUP ================= -->
+<section class="screen" id="osetup">
+  <h2>🌍 Door Se Khelo</h2>
+  <input type="text" id="o-name" placeholder="Aapka naam" maxlength="14" autocomplete="off">
+  <button class="btn" id="o-create">➕ Naya Room Banao</button>
+  <div style="font-weight:700;opacity:.6">— ya —</div>
+  <input type="text" id="o-code" class="code" placeholder="CODE" maxlength="4" autocomplete="off" autocapitalize="characters">
+  <button class="btn teal" id="o-join">🚪 Room Join Karo</button>
+  <button class="btn ghost" id="o-back">← Menu</button>
+</section>
+
+<!-- ================= LOBBY ================= -->
+<section class="screen" id="lobby">
+  <h2>Room Code</h2>
+  <div id="lobbycode">----</div>
+  <button class="btn ghost" id="l-share">📤 Doston ko bhejo</button>
+  <div id="lobbylist"></div>
+  <button class="btn" id="l-start" style="display:none">🏁 Shuru Karo!</button>
+  <p id="l-wait" style="opacity:.7">host ke shuru karne ka intezar…</p>
+  <button class="btn ghost" id="l-back">← Bahar niklo</button>
+</section>
+
+<!-- ================= OVERLAY / TOAST ================= -->
+<div id="overlay"><div class="box">
+  <div class="big" id="ov-emoji">🏆</div>
+  <h3 id="ov-title"></h3>
+  <p id="ov-sub"></p>
+  <button class="btn" id="ov-primary"></button>
+  <button class="btn ghost" id="ov-menu">Menu</button>
+</div></div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   chidiya udd — solo + same-phone party + online rooms
+   ============================================================ */
+const WS_BASE = 'wss://chidiya-udd.vaibhavpro9210.workers.dev';
+
+// [devanagari, latin, emoji, flies] — keep in sync with worker/worker.js
+const WORDS = [
+  ['चिड़िया','Chidiya','🐦',1],['तोता','Tota','🦜',1],['कबूतर','Kabootar','🕊️',1],
+  ['कौआ','Kauwa','🐦‍⬛',1],['तितली','Titli','🦋',1],['मच्छर','Machhar','🦟',1],
+  ['मक्खी','Makkhi','🪰',1],['चील','Cheel','🦅',1],['उल्लू','Ullu','🦉',1],
+  ['बत्तख','Battakh','🦆',1],['मधुमक्खी','Madhumakkhi','🐝',1],['चमगादड़','Chamgadad','🦇',1],
+  ['हवाई जहाज़','Hawai Jahaz','✈️',1],['हेलीकॉप्टर','Helicopter','🚁',1],
+  ['पतंग','Patang','🪁',1],['रॉकेट','Rocket','🚀',1],
+  ['गाय','Gaay','🐄',0],['भैंस','Bhains','🐃',0],['कुत्ता','Kutta','🐕',0],
+  ['बिल्ली','Billi','🐈',0],['हाथी','Hathi','🐘',0],['घोड़ा','Ghoda','🐴',0],
+  ['बकरी','Bakri','🐐',0],['मछली','Machhli','🐟',0],['साँप','Saanp','🐍',0],
+  ['मेंढक','Mendak','🐸',0],['कछुआ','Kachhua','🐢',0],['केकड़ा','Kekda','🦀',0],
+  ['पेंगुइन','Penguin','🐧',0],['कुर्सी','Kursi','🪑',0],['जूता','Joota','👟',0],
+  ['पत्थर','Patthar','🪨',0],['आलू','Aloo','🥔',0],['रिक्शा','Rickshaw','🛺',0],
+  ['साइकिल','Cycle','🚲',0],['बस','Bus','🚌',0],['रेलगाड़ी','Railgaadi','🚂',0],
+];
+function pickWord(){
+  const wantFly = Math.random() < 0.55 ? 1 : 0;
+  const pool = WORDS.filter(w => w[3] === wantFly);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+const PCOLORS = ['#ff7a1a','#00a896','#e0479e','#7048e8'];
+const $ = id => document.getElementById(id);
+const screens = ['menu','game','psetup','party','osetup','lobby'];
+function show(name){
+  screens.forEach(s => $(s).classList.toggle('active', s === name));
+}
+let toastT;
+function toast(msg, ms=2200){
+  const t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastT); toastT = setTimeout(()=> t.style.display='none', ms);
+}
+function overlay(emoji, title, sub, primaryLabel, onPrimary){
+  $('ov-emoji').textContent = emoji; $('ov-title').textContent = title;
+  $('ov-sub').textContent = sub;
+  const b = $('ov-primary');
+  b.style.display = primaryLabel ? '' : 'none';
+  b.textContent = primaryLabel || '';
+  b.onclick = () => { hideOverlay(); onPrimary && onPrimary(); };
+  $('overlay').classList.add('active');
+}
+function hideOverlay(){ $('overlay').classList.remove('active'); }
+
+/* ---------- sound + voice ---------- */
+let soundOn = localStorage.getItem('cu_sound') !== '0';
+$('soundbtn').textContent = soundOn ? '🔊' : '🔇';
+$('soundbtn').onclick = () => {
+  soundOn = !soundOn;
+  localStorage.setItem('cu_sound', soundOn ? '1' : '0');
+  $('soundbtn').textContent = soundOn ? '🔊' : '🔇';
+  if (!soundOn) try{ speechSynthesis.cancel(); }catch(e){}
+};
+let AC = null;
+function ac(){ if (!AC) try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} return AC; }
+function beep(freq, dur, type='sine', vol=0.12, delay=0){
+  if (!soundOn) return; const c = ac(); if (!c) return;
+  if (c.state === 'suspended') c.resume();
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.value = freq;
+  const t = c.currentTime + delay;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+const sfx = {
+  call(){ beep(520, .12, 'triangle', .1); },
+  good(){ beep(660, .1, 'triangle'); beep(880, .16, 'triangle', .12, .09); },
+  bad(){ beep(150, .3, 'sawtooth', .14); if (navigator.vibrate) navigator.vibrate(180); },
+  win(){ [523,659,784,1047].forEach((f,i)=>beep(f, .18, 'triangle', .12, i*.12)); },
+};
+let hiVoice = null;
+function findVoice(){
+  try {
+    const vs = speechSynthesis.getVoices();
+    hiVoice = vs.find(v=>v.lang==='hi-IN') || vs.find(v=>v.lang&&v.lang.startsWith('hi')) || null;
+  } catch(e){}
+}
+try { findVoice(); speechSynthesis.onvoiceschanged = findVoice; } catch(e){}
+function speak(word){
+  if (!soundOn) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(word + ' उड़!');
+    if (hiVoice) u.voice = hiVoice;
+    u.lang = 'hi-IN'; u.rate = 1.15; u.pitch = 1.1;
+    speechSynthesis.speak(u);
+  } catch(e){}
+}
+
+/* ---------- wake lock ---------- */
+let wakeLock = null;
+async function keepAwake(){
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+}
+function releaseAwake(){ try { wakeLock && wakeLock.release(); } catch(e){} wakeLock = null; }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && wakeLock) keepAwake();
+});
+
+/* ---------- pad helper (multi-finger safe hold detector) ---------- */
+function makePad(el, onChange){
+  const ids = new Set();
+  const down = e => {
+    e.preventDefault();
+    try { el.setPointerCapture(e.pointerId); } catch(err){}
+    ids.add(e.pointerId);
+    if (ids.size === 1) onChange(true);
+  };
+  const up = e => {
+    if (ids.delete(e.pointerId) && ids.size === 0) onChange(false);
+  };
+  el.addEventListener('pointerdown', down);
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+  return {
+    get down(){ return ids.size > 0; },
+    reset(){ ids.clear(); },
+  };
+}
+function runBar(barEl, wrapEl, ms){
+  wrapEl.style.visibility = 'visible';
+  barEl.style.transition = 'none';
+  barEl.style.transform = 'scaleX(1)';
+  void barEl.offsetWidth; // reflow so the transition restarts
+  barEl.style.transition = `transform ${ms}ms linear`;
+  barEl.style.transform = 'scaleX(0)';
+}
+function stopBar(barEl, wrapEl){
+  wrapEl.style.visibility = 'hidden';
+  barEl.style.transition = 'none';
+  barEl.style.transform = 'scaleX(1)';
+}
+
+/* ============================================================
+   SOLO
+   ============================================================ */
+const solo = { on:false, state:'idle', score:0, lives:3, word:null, timers:[] };
+function soloClearTimers(){ solo.timers.forEach(clearTimeout); solo.timers = []; }
+function soloT(fn, ms){ solo.timers.push(setTimeout(fn, ms)); }
+function soloWindow(){ return Math.max(850, 2200 - solo.score*55); }
+
+function soloHud(){
+  $('g-hud').innerHTML =
+    `<span class="chip">⭐ ${solo.score}</span>` +
+    `<span class="chip">${'❤️'.repeat(solo.lives)}${'🖤'.repeat(3-solo.lives)}</span>` +
+    `<span class="chip">🏅 ${localStorage.getItem('cu_best')||0}</span>`;
+}
+function soloCardIdle(msg, hint){
+  const c = $('g-card'); c.className = 'callcard';
+  $('g-emoji').textContent = '🐦'; $('g-emoji').className = 'emoji';
+  $('g-word').textContent = ''; $('g-latin').textContent = '';
+  $('g-msg').textContent = msg || '';
+  stopBar($('g-bar'), $('g-barwrap'));
+  $('g-padtext').textContent = '✋ UNGLI YAHAN RAKHO';
+  $('g-padhint').textContent = hint || 'dabaye rakho, word ka wait karo';
+}
+function startSolo(){
+  gameMode = 'solo';
+  solo.on = true; solo.score = 0; solo.lives = 3; solo.state = 'wait';
+  $('g-opps').style.display = 'none';
+  show('game'); soloHud(); soloCardIdle('Taiyaar?');
+  gamePad.reset(); $('g-pad').classList.remove('held','dead');
+  keepAwake();
+}
+function stopSolo(){
+  solo.on = false; soloClearTimers(); releaseAwake();
+  try{ speechSynthesis.cancel(); }catch(e){}
+}
+function soloHold(down){
+  $('g-pad').classList.toggle('held', down);
+  if (!solo.on) return;
+  if (solo.state === 'wait' && down){
+    solo.state = 'pre';
+    $('g-msg').textContent = '👀 dhyan se…';
+    soloT(soloCall, 500 + Math.random()*1200);
+  } else if (solo.state === 'pre' && !down){
+    soloClearTimers(); solo.state = 'wait';
+    $('g-msg').textContent = 'Ungli rakho!';
+  } else if (solo.state === 'call' && !down){
+    soloJudge(true); // lifted during the window
+  }
+}
+function soloCall(){
+  if (!solo.on) return;
+  solo.state = 'call'; solo.word = pickWord();
+  const [d, l, e] = solo.word;
+  $('g-msg').textContent = '';
+  $('g-emoji').textContent = e; $('g-emoji').className = 'emoji';
+  $('g-word').textContent = d + ' उड़!'; $('g-latin').textContent = l + ' udd!';
+  $('g-padtext').textContent = solo.word ? '🤔 udta hai?' : '';
+  $('g-padhint').textContent = 'udta hai → ungli uthao!';
+  sfx.call(); speak(d);
+  runBar($('g-bar'), $('g-barwrap'), soloWindow());
+  soloT(() => soloJudge(false), soloWindow());
+}
+function soloJudge(lifted){
+  if (solo.state !== 'call') return;
+  soloClearTimers(); solo.state = 'fb';
+  const flies = solo.word[3] === 1;
+  const ok = flies === lifted;
+  const c = $('g-card');
+  stopBar($('g-bar'), $('g-barwrap'));
+  if (ok){
+    solo.score++; sfx.good(); c.classList.add('good');
+    if (flies) $('g-emoji').classList.add('fly');
+    $('g-msg').innerHTML = `<span class="verdict good">✓ ${flies ? 'Ud gaya!' : 'Sahi pakde rahe!'}</span>`;
+    const best = +(localStorage.getItem('cu_best')||0);
+    if (solo.score > best) localStorage.setItem('cu_best', solo.score);
+  } else {
+    solo.lives--; sfx.bad(); c.classList.add('bad');
+    $('g-msg').innerHTML = `<span class="verdict bad">✗ ${flies ? (solo.word[0]+' udta hai!') : (solo.word[0]+' nahi udta!')}</span>`;
+  }
+  soloHud();
+  soloT(() => {
+    if (!solo.on) return;
+    c.className = 'callcard';
+    if (solo.lives <= 0) return soloOver();
+    solo.state = gamePad.down ? 'pre' : 'wait';
+    soloCardIdle(gamePad.down ? '👀 dhyan se…' : 'Ungli wapas rakho!');
+    if (solo.state === 'pre') soloT(soloCall, 500 + Math.random()*1200);
+  }, 900);
+}
+function soloOver(){
+  solo.state = 'over';
+  const best = +(localStorage.getItem('cu_best')||0);
+  overlay('🪹', `Game khatam! Score: ${solo.score}`,
+    solo.score >= best && solo.score > 0 ? 'Naya record! 🏅' : `Best: ${best}`,
+    '🔁 Phir Se', startSolo);
+}
+
+/* ============================================================
+   PARTY (same phone, 2–4 fingers)
+   ============================================================ */
+const party = { on:false, n:2, state:'idle', round:0, word:null, zones:[], timers:[] };
+function partyClearTimers(){ party.timers.forEach(clearTimeout); party.timers = []; }
+function partyT(fn, ms){ party.timers.push(setTimeout(fn, ms)); }
+function partyWindow(){ return Math.max(900, 2300 - party.round*80); }
+
+function startParty(n){
+  party.on = true; party.n = n; party.state = 'wait'; party.round = 0;
+  party.zones = []; partyClearTimers();
+  const zc = $('zones');
+  zc.className = 'p' + n; zc.innerHTML = '';
+  for (let i = 0; i < n; i++){
+    const el = document.createElement('div');
+    el.className = 'zone';
+    // flip zones that face the top edge: 2p -> zone0; 3p -> zone0; 4p -> zones 0,1
+    if (i === 0 || (n === 4 && i === 1)) el.classList.add('flip');
+    el.style.setProperty('--pc', PCOLORS[i]);
+    el.innerHTML = `<span class="ztag">P${i+1}</span>
+      <div class="zin"><div class="zemoji"></div><div class="zword"></div>
+      <div class="zmsg"></div><div class="zbar" style="visibility:hidden"><i></i></div></div>`;
+    zc.appendChild(el);
+    const z = { i, el, alive:true, lifted:false, judged:false,
+      emoji: el.querySelector('.zemoji'), word: el.querySelector('.zword'),
+      msg: el.querySelector('.zmsg'), bar: el.querySelector('.zbar i'),
+      barwrap: el.querySelector('.zbar') };
+    z.pad = makePad(el, down => partyHold(z, down));
+    party.zones.push(z);
+  }
+  show('party');
+  partyPrompt();
+  keepAwake();
+}
+function stopParty(){
+  party.on = false; partyClearTimers(); releaseAwake();
+  try{ speechSynthesis.cancel(); }catch(e){}
+}
+function zoneIdle(z, msg){
+  z.emoji.textContent = z.alive ? '🐦' : '💀';
+  z.word.textContent = '';
+  z.msg.textContent = msg;
+  stopBar(z.bar, z.barwrap);
+}
+function partyPrompt(){
+  party.state = 'wait';
+  party.zones.forEach(z => {
+    z.el.classList.remove('good','bad');
+    if (z.alive) zoneIdle(z, z.pad.down ? 'Taiyaar ✊' : '✋ Ungli rakho');
+    else { z.el.classList.add('out'); zoneIdle(z, 'OUT'); }
+  });
+  partyCheckStart();
+}
+function partyHold(z, down){
+  z.el.classList.toggle('held', down && z.alive);
+  if (!party.on || !z.alive) return;
+  if (party.state === 'wait'){
+    z.msg.textContent = down ? 'Taiyaar ✊' : '✋ Ungli rakho';
+    partyCheckStart();
+  } else if (party.state === 'call' && !down && !z.judged){
+    z.lifted = true; z.judged = true;
+    const flies = party.word[3] === 1;
+    if (flies){ z.el.classList.add('good'); z.msg.textContent = '✓ Ud gaya!'; sfx.good(); }
+    else { z.el.classList.add('bad'); z.msg.textContent = '✗ ' + party.word[1] + ' nahi udta!'; sfx.bad(); }
+  }
+}
+function partyCheckStart(){
+  if (party.state !== 'wait') return;
+  const alive = party.zones.filter(z => z.alive);
+  if (alive.every(z => z.pad.down)){
+    party.state = 'pre';
+    alive.forEach(z => z.msg.textContent = '👀…');
+    partyT(partyCall, 600 + Math.random()*1200);
+  } else {
+    partyClearTimers();
+  }
+}
+function partyCall(){
+  if (!party.on) return;
+  // someone slipped off during the sneaky pause?
+  const alive = party.zones.filter(z => z.alive);
+  if (!alive.every(z => z.pad.down)){ party.state = 'wait'; return partyPrompt(); }
+  party.state = 'call'; party.round++;
+  party.word = pickWord();
+  const [d, l, e] = party.word;
+  alive.forEach(z => {
+    z.lifted = false; z.judged = false;
+    z.emoji.textContent = e; z.word.textContent = d + ' उड़!'; z.msg.textContent = '';
+    runBar(z.bar, z.barwrap, partyWindow());
+  });
+  sfx.call(); speak(d);
+  partyT(partyJudge, partyWindow());
+}
+function partyJudge(){
+  if (party.state !== 'call') return;
+  party.state = 'fb';
+  const flies = party.word[3] === 1;
+  party.zones.forEach(z => {
+    if (!z.alive) return;
+    stopBar(z.bar, z.barwrap);
+    if (!z.judged){ // still holding at the deadline
+      z.judged = true;
+      if (flies){ z.el.classList.add('bad'); z.msg.textContent = '✗ ' + party.word[1] + ' udta hai!'; }
+      else { z.el.classList.add('good'); z.msg.textContent = '✓ Sahi!'; }
+    }
+    const ok = flies === z.lifted;
+    if (!ok) z.alive = false;
+  });
+  const alive = party.zones.filter(z => z.alive);
+  partyT(() => {
+    if (alive.length === 1){
+      const w = alive[0];
+      w.el.classList.remove('good','bad'); w.el.classList.add('champ');
+      w.emoji.textContent = '🏆'; w.word.textContent = ''; w.msg.textContent = 'JEET GAYE!';
+      party.zones.filter(z=>!z.alive).forEach(z => { z.el.classList.add('out'); zoneIdle(z,'OUT'); });
+      sfx.win();
+      overlay('🏆', `Player ${w.i+1} jeeta!`, `${party.round} round chale`, '🔁 Phir Se', () => startParty(party.n));
+    } else if (alive.length === 0){
+      overlay('🤝', 'Sab out! Draw!', 'ek saath sab gaye 😄', '🔁 Phir Se', () => startParty(party.n));
+    } else {
+      partyPrompt();
+    }
+  }, 1300);
+}
+
+/* ============================================================
+   ONLINE
+   ============================================================ */
+const net = { ws:null, you:null, code:null, players:[], state:'idle', round:0, lifted:false, host:false };
+function codeGen(){
+  const L = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  return Array.from({length:4}, () => L[Math.floor(Math.random()*L.length)]).join('');
+}
+function netConnect(code){
+  const name = ($('o-name').value.trim() || 'Player').slice(0,14);
+  localStorage.setItem('cu_name', name);
+  net.code = code; net.state = 'connecting'; net.lifted = false;
+  toast('Jud rahe hain…');
+  let ws;
+  try { ws = new WebSocket(`${WS_BASE}/ws/${code}?name=${encodeURIComponent(name)}`); }
+  catch(e){ return toast('Connect nahi hua 😕'); }
+  net.ws = ws;
+  ws.onmessage = e => { try { netMsg(JSON.parse(e.data)); } catch(err){} };
+  ws.onclose = () => {
+    if (net.state !== 'idle'){
+      net.state = 'idle';
+      hideOverlay(); show('menu'); releaseAwake();
+      toast('Connection toot gaya 📴');
+    }
+  };
+  ws.onerror = () => {};
+}
+function netLeave(){
+  net.state = 'idle';
+  if (net.ws){ try{ net.ws.close(); }catch(e){} net.ws = null; }
+  releaseAwake();
+}
+function netSend(m){ if (net.ws && net.ws.readyState === 1) net.ws.send(JSON.stringify(m)); }
+
+function netMsg(m){
+  if (m.t === 'joined'){
+    net.you = m.you; net.state = 'lobby';
+    $('lobbycode').textContent = m.code || net.code;
+    show('lobby'); keepAwake();
+  } else if (m.t === 'error'){
+    toast(m.msg);
+  } else if (m.t === 'lobby'){
+    net.players = m.players;
+    const me = m.players.find(p => p.id === net.you);
+    net.host = !!(me && me.host);
+    if (m.state === 'lobby'){
+      // fresh lobby (first join, or host pressed "phir se" after game over)
+      net.state = 'lobby'; hideOverlay(); renderLobby(); show('lobby');
+    } else if (m.state !== 'over' && net.state !== 'playing'){
+      netStartUI(); // host started the game — jump to the pad screen
+    }
+    netOpps();
+  } else if (m.t === 'holds'){
+    if (net.state === 'playing') netWaiting(m.h);
+  } else if (m.t === 'call'){
+    netCall(m);
+  } else if (m.t === 'result'){
+    netResult(m);
+  } else if (m.t === 'gameover'){
+    netOver(m.winnerId);
+  }
+}
+function renderLobby(){
+  $('lobbylist').innerHTML = net.players.map(p =>
+    `<div class="lp"><span>${p.host?'👑 ':''}${esc(p.name)}${p.id===net.you?' (aap)':''}</span><span>🏆 ${p.wins}</span></div>`).join('');
+  $('l-start').style.display = net.host ? '' : 'none';
+  $('l-start').disabled = net.players.length < 2;
+  $('l-wait').style.display = net.host ? 'none' : '';
+  $('l-start').textContent = net.players.length < 2 ? '⏳ 2 khiladi chahiye' : '🏁 Shuru Karo!';
+}
+function esc(s){ return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function netStartUI(){
+  net.state = 'playing'; gameMode = 'net'; hideOverlay();
+  net.round = 0; net.callActive = false; net.lifted = false;
+  $('g-hud').innerHTML = `<span class="chip">🏠 ${net.code}</span>`;
+  $('g-opps').style.display = '';
+  show('game');
+  gamePad.reset(); $('g-pad').classList.remove('held','dead');
+  soloCardIdle('Sab ungli rakho!');
+  netOpps();
+}
+function amAlive(){
+  const me = net.players.find(p => p.id === net.you);
+  return me ? me.alive : false;
+}
+function netOpps(waitIds){
+  $('g-opps').innerHTML = net.players.map(p =>
+    `<span class="opp${p.alive?'':' dead'}${waitIds && waitIds.indexOf(p.id)<0 && p.alive ? ' wait':''}" id="opp-${p.id}">${p.id===net.you?'⭐':''}${esc(p.name)}</span>`).join('');
+}
+function netWaiting(holdingIds){
+  netOpps(holdingIds);
+  if (amAlive()) {
+    $('g-msg').textContent = holdingIds.indexOf(net.you) >= 0 ? 'Baaki ka wait…' : '✋ Ungli rakho!';
+  }
+}
+function netHold(down){
+  $('g-pad').classList.toggle('held', down);
+  if (net.state !== 'playing') return;
+  if (net.round > 0 && net.callActive && !down && amAlive() && !net.lifted){
+    net.lifted = true;
+    netSend({ t:'lift', round: net.round });
+    $('g-msg').textContent = '🕊️ Uda diya!';
+  } else {
+    netSend({ t:'hold', down });
+  }
+}
+function netCall(m){
+  if (net.state !== 'playing') netStartUI();
+  net.round = m.round; net.lifted = false; net.callActive = true;
+  const w = m.word;
+  $('g-card').className = 'callcard';
+  $('g-emoji').textContent = w.e; $('g-emoji').className = 'emoji';
+  $('g-word').textContent = w.d + ' उड़!'; $('g-latin').textContent = w.l + ' udd!';
+  $('g-msg').textContent = '';
+  if (amAlive()){
+    $('g-padtext').textContent = '🤔 udta hai?';
+    $('g-padhint').textContent = 'udta hai → ungli uthao!';
+  }
+  sfx.call(); speak(w.d);
+  runBar($('g-bar'), $('g-barwrap'), m.windowMs);
+}
+function netResult(m){
+  net.callActive = false;
+  stopBar($('g-bar'), $('g-barwrap'));
+  const wasAlive = amAlive();
+  m.results.forEach(r => {
+    const p = net.players.find(p => p.id === r.id);
+    if (p && !r.ok) p.alive = false;
+    const el = $('opp-' + r.id);
+    if (el){ el.textContent += r.ok ? ' ✓' : ' ✗'; if (!r.ok) el.classList.add('dead'); }
+  });
+  const mine = m.results.find(r => r.id === net.you);
+  const c = $('g-card');
+  if (mine){
+    if (mine.ok){
+      c.classList.add('good'); sfx.good();
+      if (m.flies) $('g-emoji').classList.add('fly');
+      $('g-msg').innerHTML = `<span class="verdict good">✓ ${m.flies?'Ud gaya!':'Sahi pakde rahe!'}</span>`;
+    } else {
+      c.classList.add('bad'); sfx.bad();
+      $('g-msg').innerHTML = `<span class="verdict bad">✗ Aap out! ${m.flies?'Ye udta hai!':'Ye nahi udta!'}</span>`;
+      $('g-padtext').textContent = '💀 OUT — dekhte raho';
+      $('g-padhint').textContent = '';
+      $('g-pad').classList.add('dead');
+    }
+  } else if (!wasAlive){
+    $('g-msg').textContent = m.flies ? '(udta tha 🕊️)' : '(nahi udta tha)';
+  }
+  setTimeout(() => {
+    if (net.state !== 'playing') return;
+    c.className = 'callcard';
+    if (amAlive()){
+      $('g-emoji').textContent = '🐦'; $('g-word').textContent = ''; $('g-latin').textContent = '';
+      $('g-msg').textContent = gamePad.down ? 'Taiyaar ✊' : '✋ Ungli rakho!';
+      netSend({ t:'hold', down: gamePad.down });
+    }
+  }, 1000);
+}
+function netOver(winnerId){
+  net.state = 'over';
+  const w = net.players.find(p => p.id === winnerId);
+  const meWon = winnerId === net.you;
+  if (meWon) sfx.win();
+  overlay(meWon ? '🏆' : w ? '🐦' : '🤝',
+    meWon ? 'Aap jeet gaye!' : w ? `${w.name} jeeta!` : 'Draw! Sab out!',
+    net.host ? '' : 'host phir se shuru kar sakta hai',
+    net.host ? '🔁 Phir Se (Lobby)' : null,
+    () => netSend({ t:'again' }));
+  // non-hosts: overlay stays till host restarts (lobby msg) or they hit Menu
+}
+
+/* ============================================================
+   wiring
+   ============================================================ */
+let gameMode = 'solo'; // which engine owns the shared #game screen
+const gamePad = makePad($('g-pad'), down => {
+  if (gameMode === 'solo') soloHold(down); else netHold(down);
+});
+$('b-solo').onclick = startSolo;
+$('b-party').onclick = () => show('psetup');
+$('b-online').onclick = () => { $('o-name').value = localStorage.getItem('cu_name') || ''; show('osetup'); };
+$('p-back').onclick = () => show('menu');
+document.querySelectorAll('#psetup .btn[data-n]').forEach(b => b.onclick = () => startParty(+b.dataset.n));
+$('g-back').onclick = () => {
+  if (gameMode === 'solo') stopSolo(); else netLeave();
+  hideOverlay(); show('menu');
+};
+$('o-back').onclick = () => show('menu');
+$('o-create').onclick = () => netConnect(codeGen());
+$('o-join').onclick = () => {
+  const c = $('o-code').value.trim().toUpperCase();
+  if (!/^[A-Z]{4}$/.test(c)) return toast('4 letter ka code daalo');
+  netConnect(c);
+};
+$('l-back').onclick = () => { netLeave(); show('menu'); };
+$('l-start').onclick = () => netSend({ t:'start' });
+$('l-share').onclick = async () => {
+  const url = location.origin.startsWith('http') ? location.href.split('#')[0] + '#join=' + net.code : '';
+  const text = `Chidiya Udd khelo! Room code: ${net.code}${url ? '\n' + url : ''}`;
+  try {
+    if (navigator.share) await navigator.share({ text });
+    else { await navigator.clipboard.writeText(text); toast('Copy ho gaya 📋'); }
+  } catch(e){}
+};
+$('ov-menu').onclick = () => {
+  hideOverlay();
+  if (gameMode === 'net') netLeave(); else { stopSolo(); stopParty(); }
+  show('menu');
+};
+// party/solo: pause fairly if the tab is hidden mid-round
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (solo.on && (solo.state === 'call' || solo.state === 'pre')){
+    soloClearTimers(); solo.state = 'wait'; soloCardIdle('Wapas aa gaye? Ungli rakho!');
+  }
+  if (party.on && (party.state === 'call' || party.state === 'pre')){
+    partyClearTimers(); partyPrompt();
+  }
+});
+
+// drifting clouds
+[['12%', 46, 42], ['30%', 70, 34], ['62%', 95, 52]].forEach(([top, dur, size], i) => {
+  const c = document.createElement('div');
+  c.className = 'cloud'; c.textContent = '☁️';
+  c.style.top = top; c.style.fontSize = size + 'px';
+  c.style.animationDuration = dur + 's';
+  c.style.animationDelay = (-i * 22) + 's';
+  document.body.appendChild(c);
+});
+
+// deep links: #join=CODE (from share) and #shot=... (headless screenshot hooks)
+(function(){
+  const h = location.hash;
+  let m = h.match(/#join=([A-Za-z]{4})/);
+  if (m){
+    $('o-name').value = localStorage.getItem('cu_name') || '';
+    $('o-code').value = m[1].toUpperCase();
+    show('osetup');
+    return;
+  }
+  m = h.match(/#shot=(\w+)/);
+  if (!m) return;
+  const which = m[1];
+  if (which === 'solo'){
+    startSolo(); solo.score = 7; solo.lives = 2; soloHud();
+    solo.state = 'call'; solo.word = WORDS[0];
+    $('g-emoji').textContent = '🐦'; $('g-word').textContent = 'चिड़िया उड़!';
+    $('g-latin').textContent = 'Chidiya udd!'; $('g-msg').textContent = '';
+    $('g-barwrap').style.visibility = 'visible'; $('g-bar').style.transform = 'scaleX(.6)';
+    soloClearTimers();
+  } else if (which === 'party'){
+    startParty(4); partyClearTimers(); party.state = 'call'; party.word = WORDS[16];
+    party.zones.forEach(z => {
+      z.emoji.textContent = '🐄'; z.word.textContent = 'गाय उड़!'; z.msg.textContent = '';
+      z.barwrap.style.visibility = 'visible'; z.bar.style.transform = 'scaleX(.5)';
+    });
+  } else if (which === 'lobby'){
+    net.you = '1'; net.code = 'KHEL'; net.host = true; net.state = 'lobby';
+    net.players = [
+      { id:'1', name:'Vaibhav', alive:true, host:true, wins:2 },
+      { id:'2', name:'Guddu', alive:true, host:false, wins:0 },
+    ];
+    $('lobbycode').textContent = 'KHEL'; renderLobby(); show('lobby');
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+name = "chidiya-udd"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+# No secrets. Rooms are in-memory only (a room dies when everyone leaves) —
+# the SQLite storage backing is just what new DO migrations require.
