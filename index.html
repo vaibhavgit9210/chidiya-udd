@@ -139,7 +139,7 @@
   #cardmodal.active { display:flex; }
   #cardmodal .box { background:#fff; border-radius:24px; padding:18px; text-align:center;
     display:flex; flex-direction:column; gap:10px; align-items:center; width:min(340px,90vw); }
-  #cardimg { width:100%; border-radius:14px; box-shadow:0 6px 18px rgba(20,60,100,.25); }
+  #cardimg, #cardvid { width:100%; border-radius:14px; box-shadow:0 6px 18px rgba(20,60,100,.25); }
   #cardhint { opacity:.6; font-size:12.5px; margin:0; }
   @media (hover:hover){ #cardhint { display:none; } } /* long-press hint is for touch only */
 
@@ -232,9 +232,11 @@
 <!-- ================= SCORE CARD PREVIEW ================= -->
 <div id="cardmodal"><div class="box">
   <img id="cardimg" alt="score card">
+  <video id="cardvid" autoplay loop muted playsinline hidden></video>
   <p id="cardhint">photo ko dabake rakho → gallery me save 📱</p>
   <button class="btn" id="card-share">📤 Share</button>
-  <button class="btn teal" id="card-save">⬇️ Save PNG</button>
+  <button class="btn teal" id="card-save">⬇️ Save</button>
+  <button class="btn violet" id="card-spin">🎞 Spin video</button>
   <button class="btn ghost" id="card-close">✕ Band karo</button>
 </div></div>
 <div id="toast"></div>
@@ -327,28 +329,85 @@ function drawScoreCard(score, best, isRecord){
   g.fillText('vaibhavkumar.is-a.dev/chidiya-udd', 540, 1215);
   return c;
 }
-let cardURL = null, cardFile = null;
+let cardCanvas = null, cardURL = null, cardFile = null;
+function setCardFile(blob, name){
+  cardFile = new File([blob], name, { type: blob.type });
+  const can = navigator.canShare && navigator.canShare({ files: [cardFile] });
+  $('card-share').style.display = can ? '' : 'none';
+}
 function showScoreCard(score, best, isRecord){
-  const c = drawScoreCard(score, best, isRecord);
-  cardURL = c.toDataURL('image/png');
-  $('cardimg').src = cardURL;
-  c.toBlob(blob => {
-    cardFile = new File([blob], 'chidiya-udd-score.png', { type: 'image/png' });
-    const can = navigator.canShare && navigator.canShare({ files: [cardFile] });
-    $('card-share').style.display = can ? '' : 'none';
-  }, 'image/png');
+  cardCanvas = drawScoreCard(score, best, isRecord);
+  cardURL = cardCanvas.toDataURL('image/png');
+  $('cardimg').src = cardURL; $('cardimg').hidden = false;
+  $('cardvid').hidden = true; $('cardvid').removeAttribute('src');
   $('card-share').style.display = 'none'; // until the blob is ready
+  $('card-spin').disabled = false; $('card-spin').textContent = '🎞 Spin video';
+  cardCanvas.toBlob(blob => setCardFile(blob, 'chidiya-udd-score.png'), 'image/png');
   $('cardmodal').classList.add('active');
+}
+function bestVideoMime(){
+  if (!window.MediaRecorder) return null;
+  const m = ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+  for (const t of m) if (MediaRecorder.isTypeSupported(t)) return t;
+  return null;
+}
+// 360° horizontal spin of the card, recorded as a silent looping video
+function recordSpin(src, base, onDone, onFail){
+  const mime = bestVideoMime();
+  if (!mime) return onFail();
+  const c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  const g = c.getContext('2d');
+  let rec; const chunks = [];
+  try { rec = new MediaRecorder(c.captureStream(30), { mimeType: mime, videoBitsPerSecond: 6000000 }); }
+  catch(e){ return onFail(); }
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+    onDone(new Blob(chunks, { type: mime.split(';')[0] }), base + '.' + ext);
+  };
+  const DUR = 3600, t0 = performance.now();
+  rec.start(200);
+  (function frame(now){
+    const k = Math.min(1, (now - t0) / DUR);
+    const sx = Math.cos(k * Math.PI * 2);          // 1 → -1 → 1: one full turn
+    const sky = g.createLinearGradient(0, 0, 0, c.height);
+    sky.addColorStop(0, '#6bbfff'); sky.addColorStop(1, '#eaf7ff');
+    g.fillStyle = sky; g.fillRect(0, 0, c.width, c.height);
+    g.save();
+    g.translate(c.width / 2, 0);
+    g.scale(sx === 0 ? 0.01 : sx, 1);              // mirrored at the back — a coin spin
+    g.drawImage(src, -c.width / 2, 0);
+    g.restore();
+    g.fillStyle = 'rgba(10,30,50,' + (0.45 * (1 - Math.abs(sx))) + ')'; // edge-on shading
+    g.fillRect(0, 0, c.width, c.height);
+    if (k < 1) requestAnimationFrame(frame);
+    else setTimeout(() => rec.stop(), 250);
+  })(t0);
 }
 $('card-close').onclick = () => $('cardmodal').classList.remove('active');
 $('card-save').onclick = () => {
   const a = document.createElement('a');
-  a.href = cardURL; a.download = 'chidiya-udd-score.png'; a.click();
-  toast('PNG save ho gaya! 📥');
+  if (!$('cardvid').hidden){ a.href = $('cardvid').src; a.download = cardFile.name; }
+  else { a.href = cardURL; a.download = 'chidiya-udd-score.png'; }
+  a.click();
+  toast('Save ho gaya! 📥');
 };
 $('card-share').onclick = async () => {
   try { await navigator.share({ files: [cardFile], title: 'chidiya udd' }); }
   catch(e){ /* user closed the sheet */ }
+};
+$('card-spin').onclick = () => {
+  const btn = $('card-spin');
+  btn.disabled = true; btn.textContent = 'ban raha hai…';
+  recordSpin(cardCanvas, 'chidiya-udd-score', (blob, name) => {
+    $('cardvid').src = URL.createObjectURL(blob);
+    $('cardvid').hidden = false; $('cardimg').hidden = true;
+    setCardFile(blob, name);
+    btn.textContent = '🎞 ghoom raha hai!';
+  }, () => {
+    btn.disabled = false; btn.textContent = 'video yahan nahi chalta';
+  });
 };
 
 /* ---------- sound + voice ---------- */
