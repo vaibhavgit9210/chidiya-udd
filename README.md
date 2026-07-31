@@ -32,7 +32,8 @@ The word list lives in BOTH `index.html` (solo/party) and `worker/worker.js`
 ## Gotchas / dev notes
 
 - Screenshot hooks (rAF-free, safe for headless Chrome): `#shot=solo`,
-  `#shot=party`, `#shot=lobby`. Remember headless Chrome's ~500px minimum
+  `#shot=party`, `#shot=lobby`, `#shot=card` (score-card preview modal).
+  Remember headless Chrome's ~500px minimum
   window width — shoot at `--window-size=500,1000`.
 - Timer bars are CSS-transition based (no rAF at all in the game).
 - Round flow: all alive players must HOLD → random 0.6–1.7s sneaky pause → call →
