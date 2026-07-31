@@ -133,6 +133,16 @@
   #overlay .big { font-size:44px; }
   #overlay h3 { font-size:24px; }
   #overlay p { opacity:.7; font-size:15px; }
+  /* ---------- score card preview ---------- */
+  #cardmodal { position:fixed; inset:0; background:rgba(10,30,50,.65); z-index:60;
+    display:none; align-items:center; justify-content:center; padding:20px; }
+  #cardmodal.active { display:flex; }
+  #cardmodal .box { background:#fff; border-radius:24px; padding:18px; text-align:center;
+    display:flex; flex-direction:column; gap:10px; align-items:center; width:min(340px,90vw); }
+  #cardimg { width:100%; border-radius:14px; box-shadow:0 6px 18px rgba(20,60,100,.25); }
+  #cardhint { opacity:.6; font-size:12.5px; margin:0; }
+  @media (hover:hover){ #cardhint { display:none; } } /* long-press hint is for touch only */
+
   #toast { position:fixed; left:50%; bottom:12%; transform:translateX(-50%); background:#123;
     color:#fff; padding:10px 18px; border-radius:14px; font-weight:700; z-index:70;
     display:none; max-width:86vw; text-align:center; }
@@ -215,7 +225,17 @@
   <h3 id="ov-title"></h3>
   <p id="ov-sub"></p>
   <button class="btn" id="ov-primary"></button>
+  <button class="btn violet" id="ov-share" style="display:none">📤 Score Card</button>
   <button class="btn ghost" id="ov-menu">Menu</button>
+</div></div>
+
+<!-- ================= SCORE CARD PREVIEW ================= -->
+<div id="cardmodal"><div class="box">
+  <img id="cardimg" alt="score card">
+  <p id="cardhint">photo ko dabake rakho → gallery me save 📱</p>
+  <button class="btn" id="card-share">📤 Share</button>
+  <button class="btn teal" id="card-save">⬇️ Save PNG</button>
+  <button class="btn ghost" id="card-close">✕ Band karo</button>
 </div></div>
 <div id="toast"></div>
 
@@ -261,6 +281,7 @@ function toast(msg, ms=2200){
 function overlay(emoji, title, sub, primaryLabel, onPrimary){
   $('ov-emoji').textContent = emoji; $('ov-title').textContent = title;
   $('ov-sub').textContent = sub;
+  $('ov-share').style.display = 'none'; // only game-over turns this on
   const b = $('ov-primary');
   b.style.display = primaryLabel ? '' : 'none';
   b.textContent = primaryLabel || '';
@@ -268,6 +289,67 @@ function overlay(emoji, title, sub, primaryLabel, onPrimary){
   $('overlay').classList.add('active');
 }
 function hideOverlay(){ $('overlay').classList.remove('active'); }
+
+/* ---------- shareable score card ---------- */
+const FONT = "ui-rounded,'SF Pro Rounded','Hind','Segoe UI',system-ui,sans-serif";
+function rr(g, x, y, w, h, r){
+  g.beginPath();
+  g.moveTo(x+r, y); g.arcTo(x+w, y, x+w, y+h, r); g.arcTo(x+w, y+h, x, y+h, r);
+  g.arcTo(x, y+h, x, y, r); g.arcTo(x, y, x+w, y, r); g.closePath();
+}
+function drawScoreCard(score, best, isRecord){
+  const c = document.createElement('canvas');
+  c.width = 1080; c.height = 1350;
+  const g = c.getContext('2d');
+  const sky = g.createLinearGradient(0, 0, 0, 1350);
+  sky.addColorStop(0, '#6bbfff'); sky.addColorStop(.55, '#a8dcff'); sky.addColorStop(1, '#eaf7ff');
+  g.fillStyle = sky; g.fillRect(0, 0, 1080, 1350);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.globalAlpha = .8; g.font = '70px ' + FONT;
+  g.fillText('☁️', 170, 150); g.fillText('☁️', 900, 260);
+  g.font = '48px ' + FONT; g.fillText('☁️', 620, 90);
+  g.globalAlpha = 1;
+  g.font = '190px ' + FONT; g.fillText('🐦', 540, 280);
+  g.save();
+  g.shadowColor = 'rgba(20,60,100,.25)'; g.shadowBlur = 40; g.shadowOffsetY = 14;
+  g.fillStyle = '#fff'; rr(g, 90, 440, 900, 570, 48); g.fill();
+  g.restore();
+  g.fillStyle = '#123';
+  g.font = '900 92px ' + FONT; g.fillText('चिड़िया उड़!', 540, 545);
+  g.globalAlpha = .55; g.font = '700 44px ' + FONT; g.fillText('chidiya udd!', 540, 625);
+  g.globalAlpha = 1;
+  g.fillStyle = '#ff7a1a'; g.font = '900 220px ' + FONT; g.fillText(String(score), 540, 800);
+  g.fillStyle = '#123'; g.font = '700 48px ' + FONT;
+  g.fillText(isRecord ? 'Naya record! 🏅' : 'Best: ' + best, 540, 935);
+  g.font = '700 52px ' + FONT;
+  g.fillText('🤔 udta hai? aa ke khelo:', 540, 1130);
+  g.font = '900 46px ' + FONT;
+  g.fillText('vaibhavkumar.is-a.dev/chidiya-udd', 540, 1215);
+  return c;
+}
+let cardURL = null, cardFile = null;
+function showScoreCard(score, best, isRecord){
+  const c = drawScoreCard(score, best, isRecord);
+  cardURL = c.toDataURL('image/png');
+  $('cardimg').src = cardURL;
+  c.toBlob(blob => {
+    cardFile = new File([blob], 'chidiya-udd-score.png', { type: 'image/png' });
+    const can = navigator.canShare && navigator.canShare({ files: [cardFile] });
+    $('card-share').style.display = can ? '' : 'none';
+  }, 'image/png');
+  $('card-share').style.display = 'none'; // until the blob is ready
+  $('cardmodal').classList.add('active');
+}
+$('card-close').onclick = () => $('cardmodal').classList.remove('active');
+$('card-save').onclick = () => {
+  const a = document.createElement('a');
+  a.href = cardURL; a.download = 'chidiya-udd-score.png'; a.click();
+  toast('PNG save ho gaya! 📥');
+};
+$('card-share').onclick = async () => {
+  try { await navigator.share({ files: [cardFile], title: 'chidiya udd' }); }
+  catch(e){ /* user closed the sheet */ }
+};
 
 /* ---------- sound + voice ---------- */
 let soundOn = localStorage.getItem('cu_sound') !== '0';
@@ -450,9 +532,12 @@ function soloJudge(lifted){
 function soloOver(){
   solo.state = 'over';
   const best = +(localStorage.getItem('cu_best')||0);
+  const isRec = solo.score >= best && solo.score > 0;
   overlay('🪹', `Game khatam! Score: ${solo.score}`,
-    solo.score >= best && solo.score > 0 ? 'Naya record! 🏅' : `Best: ${best}`,
+    isRec ? 'Naya record! 🏅' : `Best: ${best}`,
     '🔁 Phir Se', startSolo);
+  $('ov-share').style.display = '';
+  $('ov-share').onclick = () => showScoreCard(solo.score, best, isRec);
 }
 
 /* ============================================================
@@ -836,6 +921,8 @@ document.addEventListener('visibilitychange', () => {
       z.emoji.textContent = '🐄'; z.word.textContent = 'गाय उड़!'; z.msg.textContent = '';
       z.barwrap.style.visibility = 'visible'; z.bar.style.transform = 'scaleX(.5)';
     });
+  } else if (which === 'card'){
+    showScoreCard(23, 23, true);
   } else if (which === 'lobby'){
     net.you = '1'; net.code = 'KHEL'; net.host = true; net.state = 'lobby';
     net.players = [
