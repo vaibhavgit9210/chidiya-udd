@@ -1,5 +1,7 @@
 # चिड़िया उड़ 🐦 (Chidiya Udd)
 
+**Live:** https://vaibhavkumar.is-a.dev/chidiya-udd/
+
 The classic Indian children's game, on a phone. A name flashes ("गाय उड़!") — if the
 thing flies, lift your finger off the pad in time; if it doesn't, keep it pressed.
 One mistake and you're out. Speed ramps up every round. Trick words included
