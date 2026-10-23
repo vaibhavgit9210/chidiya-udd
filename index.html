@@ -167,9 +167,9 @@
   <h1>चिड़िया उड़!</h1>
   <div class="sub">udta hai to ungli uthao. nahi udta to hilna mat!</div>
   <button class="btn" id="b-solo">🪶 Akele Khelo <small>computer bolega, aap udao</small></button>
-  <button class="btn teal" id="b-party">📱 Ek Phone, Sab Log <small>2–4 ungliyan, ek hi screen</small></button>
+  <button class="btn teal" id="b-party">📱 Ek Phone, Sab Log <small>2-4 ungliyan, ek hi screen</small></button>
   <button class="btn violet" id="b-online">🌍 Door Se Khelo <small>room code se doston ke saath</small></button>
-  <div id="howto"><b>Kaise khelein:</b> ungli pad par rakho. Naam aayega — agar wo <b>udta hai</b> (chidiya ✈️ titli) to ungli <b>uthao</b>, nahi udta (gaay 🪑 aloo) to <b>rakhe raho</b>. Galti = out! Speed badhti jaayegi 😈</div>
+  <div id="howto"><b>Kaise khelein:</b> ungli pad par rakho. Naam aayega. Agar wo <b>udta hai</b> (chidiya ✈️ titli) to ungli <b>uthao</b>, nahi udta (gaay 🪑 aloo) to <b>rakhe raho</b>. Galti = out! Speed badhti jaayegi 😈</div>
 </section>
 
 <!-- ================= SOLO / ONLINE GAME ================= -->
@@ -194,7 +194,7 @@
 <!-- ================= PARTY SETUP ================= -->
 <section class="screen" id="psetup">
   <h2>📱 Kitne khiladi?</h2>
-  <p style="opacity:.7;font-size:14px;max-width:300px;text-align:center">Phone beech mein rakho — har khiladi apne rang ke dabbe par ungli rakhega</p>
+  <p style="opacity:.7;font-size:14px;max-width:300px;text-align:center">Phone beech mein rakho, har khiladi apne rang ke dabbe par ungli rakhega</p>
   <button class="btn" data-n="2">👥 2 Khiladi</button>
   <button class="btn teal" data-n="3">👥 3 Khiladi</button>
   <button class="btn violet" data-n="4">👥 4 Khiladi</button>
@@ -211,7 +211,7 @@
   <h2>🌍 Door Se Khelo</h2>
   <input type="text" id="o-name" placeholder="Aapka naam" maxlength="14" autocomplete="off">
   <button class="btn" id="o-create">➕ Naya Room Banao</button>
-  <div style="font-weight:700;opacity:.6">— ya —</div>
+  <div style="font-weight:700;opacity:.6">· ya ·</div>
   <input type="text" id="o-code" class="code" placeholder="CODE" maxlength="4" autocomplete="off" autocapitalize="characters">
   <button class="btn teal" id="o-join">🚪 Room Join Karo</button>
   <button class="btn ghost" id="o-back">← Menu</button>
@@ -815,7 +815,7 @@ function netResult(m){
     } else {
       c.classList.add('bad'); sfx.bad();
       $('g-msg').innerHTML = `<span class="verdict bad">✗ Aap out! ${m.flies?'Ye udta hai!':'Ye nahi udta!'}</span>`;
-      $('g-padtext').textContent = '💀 OUT — dekhte raho';
+      $('g-padtext').textContent = '💀 OUT · dekhte raho';
       $('g-padhint').textContent = '';
       $('g-pad').classList.add('dead');
     }
